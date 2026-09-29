@@ -1,0 +1,128 @@
+{
+  "format": 3,
+  "id": "minecraft:vintage",
+  "name": "Vintage Visuals",
+  "categories": [
+    {
+      "id": "lighting",
+      "label": "Lighting",
+      "options": [
+        {
+          "id": "water_sun_glint",
+          "type": "engine",
+          "binding": "WATER_SUN_GLINT"
+        },
+        {
+          "id": "water_sun_glint_quality",
+          "type": "engine",
+          "binding": "WATER_SUN_GLINT_QUALITY",
+          "control": "slider"
+        },
+        {
+          "id": "light_shafts",
+          "type": "engine",
+          "binding": "LIGHT_SHAFTS"
+        },
+        {
+          "id": "light_shafts_quality",
+          "type": "engine",
+          "binding": "LIGHT_SHAFTS_QUALITY",
+          "control": "slider"
+        }
+      ]
+    },
+    {
+      "id": "shadows",
+      "label": "Shadows",
+      "options": [
+        {
+          "id": "vulkan_dynamic_shadows",
+          "type": "engine",
+          "binding": "VULKAN_DYNAMIC_SHADOWS"
+        },
+        {
+          "id": "vulkan_dynamic_shadows_quality",
+          "type": "engine",
+          "binding": "VULKAN_DYNAMIC_SHADOWS_QUALITY",
+          "control": "slider"
+        },
+        {
+          "id": "cloud_shadows",
+          "type": "engine",
+          "binding": "CLOUD_SHADOWS"
+        },
+        {
+          "id": "cloud_shadows_quality",
+          "type": "engine",
+          "binding": "CLOUD_SHADOWS_QUALITY",
+          "control": "slider"
+        }
+      ]
+    },
+    {
+      "id": "materials",
+      "label": "Materials and illumination",
+      "options": [
+        {
+          "id": "colored_global_illumination",
+          "type": "engine",
+          "binding": "COLORED_GLOBAL_ILLUMINATION"
+        },
+        {
+          "id": "colored_global_illumination_quality",
+          "type": "engine",
+          "binding": "COLORED_GLOBAL_ILLUMINATION_QUALITY",
+          "control": "slider"
+        },
+        {
+          "id": "pbr_materials",
+          "type": "engine",
+          "binding": "PBR_MATERIALS"
+        },
+        {
+          "id": "pbr_materials_quality",
+          "type": "engine",
+          "binding": "PBR_MATERIALS_QUALITY",
+          "control": "slider"
+        },
+        {
+          "id": "water_caustics",
+          "type": "engine",
+          "binding": "WATER_CAUSTICS"
+        }
+      ]
+    },
+    {
+      "id": "reflections",
+      "label": "Reflections",
+      "options": [
+        {
+          "id": "screen_space_water_reflections",
+          "type": "engine",
+          "binding": "SCREEN_SPACE_WATER_REFLECTIONS"
+        },
+        {
+          "id": "screen_space_water_reflections_quality",
+          "type": "engine",
+          "binding": "SCREEN_SPACE_WATER_REFLECTIONS_QUALITY",
+          "control": "slider"
+        }
+      ]
+    }
+  ],
+  "programs": {
+    "minecraft_color.frag": "surface.frag"
+  },
+  "lighting_mode": "rasterized",
+  "engine_defaults": {
+    "WATER_SUN_GLINT": true,
+    "LIGHT_SHAFTS": true,
+    "VULKAN_DYNAMIC_SHADOWS": true,
+    "CLOUD_SHADOWS": true,
+    "COLORED_GLOBAL_ILLUMINATION": false,
+    "PBR_MATERIALS": false,
+    "WATER_CAUSTICS": true,
+    "SCREEN_SPACE_WATER_REFLECTIONS": true,
+    "EMISSIVE_SHADOW_CASTING": false
+  }
+}
