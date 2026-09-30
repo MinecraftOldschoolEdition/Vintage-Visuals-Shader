@@ -1,0 +1,14 @@
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    p.tasks.named('compileTestJava') {
+        setSource(p.fileTree('src/test/java') {
+            include 'net/minecraft/src/graphics/backend/vulkan/**'
+            include 'net/minecraft/src/world/core/LightweightTestWorld.java'
+            exclude 'net/minecraft/src/graphics/backend/vulkan/CornerDaylightGpuProbe.java'
+        })
+    }
+    p.tasks.register('giClasspath') {
+        dependsOn p.tasks.named('testClasses')
+        doLast { println(p.sourceSets.test.runtimeClasspath.asPath) }
+    }
+}

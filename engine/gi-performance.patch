@@ -1,0 +1,326 @@
+--- a/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanColoredLightVolume.java
++++ b/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanColoredLightVolume.java
+@@ -14,6 +14,7 @@
+     static final int CELL_COUNT = SIZE * SIZE * SIZE;
+     private static final int ANCHOR_STEP = 8;
+     private static final int MAX_CHUNKS_PER_AXIS = SIZE / 16 + 1;
++    private static final int[] DECAY = createDecayTable();
+ 
+     private final int[] colors = new int[CELL_COUNT];
+     private final byte[] opacity = new byte[CELL_COUNT];
+@@ -175,7 +176,7 @@
+         for (int cell = 0; cell < count; ++cell) {
+             if (colors[cell] != 0) {
+                 queue[tail] = cell;
+-                tail = (tail + 1) % count;
++                if (++tail == count) tail = 0;
+                 queued[cell] = true;
+                 ++pending;
+             }
+@@ -183,13 +184,15 @@
+         int layer = size * size;
+         while (pending > 0) {
+             int cell = queue[head];
+-            head = (head + 1) % count;
++            if (++head == count) head = 0;
+             --pending;
+             queued[cell] = false;
+             int x = cell % size;
+             int z = (cell / size) % size;
+             int y = cell / layer;
+             int source = colors[cell];
++            int open = attenuate(source, 1);
++            if (open == 0) continue;
+             for (int face = 0; face < 6; ++face) {
+                 int neighbor;
+                 switch (face) {
+@@ -202,7 +205,7 @@
+                 }
+                 int absorption = opacity[neighbor] & 255;
+                 if (absorption >= 15) continue;
+-                int transported = attenuate(source, Math.max(1, absorption));
++                int transported = absorption <= 1 ? open : attenuate(source, absorption);
+                 int previous = colors[neighbor];
+                 int mixed = Math.max(previous & 255, transported & 255)
+                     | Math.max(previous >> 8 & 255, transported >> 8 & 255) << 8
+@@ -211,7 +214,7 @@
+                     colors[neighbor] = mixed;
+                     if (!queued[neighbor]) {
+                         queue[tail] = neighbor;
+-                        tail = (tail + 1) % count;
++                        if (++tail == count) tail = 0;
+                         queued[neighbor] = true;
+                         ++pending;
+                     }
+@@ -221,16 +224,23 @@
+     }
+ 
+     private static int attenuate(int color, int distance) {
+-        int red = color & 255;
+-        int green = color >> 8 & 255;
+-        int blue = color >> 16 & 255;
+-        for (int step = 0; step < distance; ++step) {
+-            // Proportional decay transports the emitter hue around open corners.
+-            // The integer loss makes even a full-strength source vanish by step 15.
+-            red = Math.max(0, red * 3 / 4 - 1);
+-            green = Math.max(0, green * 3 / 4 - 1);
+-            blue = Math.max(0, blue * 3 / 4 - 1);
+-        }
+-        return red | green << 8 | blue << 16;
++        int offset = distance << 8;
++        return DECAY[offset | (color & 255)]
++            | DECAY[offset | (color >> 8 & 255)] << 8
++            | DECAY[offset | (color >> 16 & 255)] << 16;
++    }
++
++    private static int[] createDecayTable() {
++        int[] table = new int[16 * 256];
++        for (int value = 0; value < 256; ++value) {
++            int decayed = value;
++            table[value] = value;
++            for (int distance = 1; distance < 16; ++distance) {
++                // Preserve each integer rounding step of the original transport.
++                decayed = Math.max(0, decayed * 3 / 4 - 1);
++                table[distance << 8 | value] = decayed;
++            }
++        }
++        return table;
+     }
+ }
+--- a/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanColoredLightTiles.java
++++ b/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanColoredLightTiles.java
+@@ -62,27 +62,34 @@
+         this.originZ = (nextAnchorZ - PAGE_RADIUS) * TILE_SIZE;
+         this.pageHeight = nextPageHeight;
+ 
+-        Set<Long> retained = new HashSet<>(), changed = new HashSet<>();
+-        Arrays.fill(this.emissionColors, -1);
++        Set<Long> retained = reset || moved ? new HashSet<>() : null;
++        Set<Long> changed = Set.of();
++        boolean resetEmissionColors = false;
+         // An extra loaded-only column ring supplies the full transport halo at the residency edge.
+         int radius = PAGE_RADIUS + 1;
+         for (int z = nextAnchorZ - radius; z <= nextAnchorZ + radius; ++z) {
+             for (int x = nextAnchorX - radius; x <= nextAnchorX + radius; ++x) {
+                 long key = columnKey(x, z);
+-                retained.add(key);
++                if (retained != null) retained.add(key);
+                 ChunkAccess chunk = nextWorld.getChunkForRenderSnapshot(x, z, false);
+                 Column previous = this.columns.get(key);
+                 long identity = chunk == null ? 0L : chunk.getRenderSnapshotIdentity();
+                 int blockRevision = chunk == null ? 0 : chunk.getBlockStateRevision();
+                 if (previous == null || previous.identity != identity || previous.revision != blockRevision) {
++                    if (!resetEmissionColors) {
++                        Arrays.fill(this.emissionColors, -1);
++                        resetEmissionColors = true;
++                    }
+                     Column next = scanColumn(chunk, identity, blockRevision, previous);
+                     this.columns.put(key, next);
+-                    if (previous == null || previous.identity != identity || previous.inputs != next.inputs)
++                    if (previous == null || previous.identity != identity || previous.inputs != next.inputs) {
++                        if (changed.isEmpty()) changed = new HashSet<>();
+                         changed.add(key);
+-                }
+-            }
+-        }
+-        this.columns.keySet().retainAll(retained);
++                    }
++                }
++            }
++        }
++        if (retained != null) this.columns.keySet().retainAll(retained);
+         if (!reset && !moved && changed.isEmpty()) return hasLight();
+ 
+         Set<Tile> candidates = new HashSet<>();
+@@ -195,34 +202,11 @@
+ 
+     private int[] buildTile(Tile tile) {
+         Arrays.fill(this.transport, 0);
+-        int baseX = (tile.x - 1) * TILE_SIZE, baseY = (tile.y - 1) * TILE_SIZE;
+-        int baseZ = (tile.z - 1) * TILE_SIZE;
+-        ChunkAccess[] neighbors = new ChunkAccess[9];
++        Arrays.fill(this.opacity, (byte)15);
++        int baseY = (tile.y - 1) * TILE_SIZE;
+         for (int z = 0; z < 3; ++z) for (int x = 0; x < 3; ++x) {
+             Column column = this.columns.get(columnKey(tile.x + x - 1, tile.z + z - 1));
+-            neighbors[x + z * 3] = column == null ? null : column.chunk;
+-        }
+-        for (int y = 0; y < PADDED_SIZE; ++y) {
+-            int worldY = baseY + y;
+-            for (int z = 0; z < PADDED_SIZE; ++z) {
+-                int worldZ = baseZ + z;
+-                for (int x = 0; x < PADDED_SIZE; ++x) {
+-                    int worldX = baseX + x, cell = x + PADDED_SIZE * (z + PADDED_SIZE * y);
+-                    ChunkAccess chunk = neighbors[(x >> 4) + (z >> 4) * 3];
+-                    if (chunk == null || worldY < this.minBuildHeight) this.opacity[cell] = 15;
+-                    else if (worldY >= this.maxBuildHeight) this.opacity[cell] = 0;
+-                    else {
+-                        int blockId = chunk.getBlockID(worldX & 15, worldY, worldZ & 15);
+-                        this.opacity[cell] = (byte)Math.min(15, Math.max(0, Block.lightOpacity[blockId]));
+-                        if (Block.lightValue[blockId] > 0) {
+-                            int metadata = chunk.getBlockMetadata(worldX & 15, worldY, worldZ & 15) & 15;
+-                            int palette = blockId * 16 + metadata, color = this.emissionColors[palette];
+-                            if (color < 0) this.emissionColors[palette] = color = VulkanColoredLightVolume.emissionColor(blockId, metadata);
+-                            this.transport[cell] = color;
+-                        }
+-                    }
+-                }
+-            }
++            if (column != null && column.chunk != null) copyOpticalColumn(column.inputs, x * TILE_SIZE, z * TILE_SIZE, baseY);
+         }
+         VulkanColoredLightVolume.diffuse(PADDED_SIZE, this.opacity, this.transport, this.queue, this.queued);
+         int[] result = new int[TILE_CELLS];
+@@ -243,6 +227,42 @@
+         return nonzero ? result : new int[0];
+     }
+ 
++    private void copyOpticalColumn(int[] runs, int x, int z, int baseY) {
++        // The revision scan already captured these exact emission/opacity inputs.
++        // Expand their contiguous runs instead of reading 48^3 world blocks again
++        // for every overlapping transport tile. Missing columns remain opaque.
++        for (int y = Math.max(0, this.maxBuildHeight - baseY); y < PADDED_SIZE; ++y)
++            for (int row = 0; row < TILE_SIZE; ++row) {
++                int destination = x + PADDED_SIZE * (z + row + PADDED_SIZE * y);
++                Arrays.fill(this.opacity, destination, destination + TILE_SIZE, (byte)0);
++            }
++        int firstY = Math.max(baseY, this.minBuildHeight);
++        int lastY = Math.min(baseY + PADDED_SIZE, this.maxBuildHeight);
++        if (firstY >= lastY) return;
++        int cell = (firstY - this.minBuildHeight) * 256;
++        int limit = (lastY - this.minBuildHeight) * 256;
++        int low = 0, high = runs.length / 2;
++        while (low < high) {
++            int middle = (low + high) >>> 1;
++            if (runs[middle * 2] <= cell) low = middle + 1;
++            else high = middle;
++        }
++        for (int run = low * 2; cell < limit; run += 2) {
++            int end = Math.min(runs[run], limit), optical = runs[run + 1];
++            byte absorption = (byte)(optical >>> 24);
++            int color = optical & 0xffffff;
++            while (cell < end) {
++                int withinX = cell & 15, rowEnd = Math.min(end, (cell | 15) + 1);
++                int y = this.minBuildHeight + (cell >>> 8) - baseY;
++                int destination = x + withinX + PADDED_SIZE * (z + (cell >>> 4 & 15) + PADDED_SIZE * y);
++                int destinationEnd = destination + rowEnd - cell;
++                Arrays.fill(this.opacity, destination, destinationEnd, absorption);
++                if (color != 0) Arrays.fill(this.transport, destination, destinationEnd, color);
++                cell = rowEnd;
++            }
++        }
++    }
++
+     void clear() {
+         if (this.world == null) return;
+         this.world = null; this.columns.clear(); this.tiles.clear(); this.words = new int[4];
+--- a/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanHardwareIrradianceShader.java
++++ b/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanHardwareIrradianceShader.java
+@@ -3,6 +3,11 @@
+ /** Low-frequency world-space hardware irradiance, shared by compute and terrain sampling. */
+ final class VulkanHardwareIrradianceShader {
+     private VulkanHardwareIrradianceShader() { }
++
++    static final int PROBES_PER_WORKGROUP = 2;
++    static int workgroupCount(int updates) {
++        return (updates + PROBES_PER_WORKGROUP - 1) / PROBES_PER_WORKGROUP;
++    }
+ 
+     private static String layout(boolean writable) {
+         return """
+@@ -174,41 +179,60 @@
+             +VulkanRayTracingLightSamplingShader.SOURCE+VulkanColoredLightShader.SOURCE
+             +materialHeader+environment+VulkanRayTracingShader.PROTOTYPES
+             +VulkanRayTracingShader.SOURCE+layout(true)+"""
++            // Two probes share a group; each ray owns a lane. Accumulate in the
++            // original sample order so scheduling does not change SH/AO rounding.
++            shared vec4 rayBasis[64];
++            shared vec4 rayRadiance[64];
++            shared uint rayHit[64];
+             void main() {
+-                int invocation=int(gl_GlobalInvocationID.x);
+-                if(hardwareIrradiance.meta.y<=0 || invocation>=hardwareIrradiance.meta.w
+-                    || hardwareIrradiance.meta.x<=0) return;
+-                int index=(hardwareIrradiance.meta.z+invocation)%hardwareIrradiance.meta.x;
+-                if(index<0 || index>=hardwareIrradiance.probes.length()) return;
+-                HardwareIrradianceProbe probe=hardwareIrradiance.probes[index];
+-                if(probe.position.w<0.0) return;
+-                vec4 hitR=vec4(0),hitG=vec4(0),hitB=vec4(0),skyR=vec4(0),skyG=vec4(0),skyB=vec4(0);
+-                ivec3 cell=ivec3(floor(probe.position.xyz))+hardwareIrradiance.reference.xyz;
+-                uint hash=uint(cell.x)*73856093u ^ uint(cell.y)*19349663u ^ uint(cell.z)*83492791u;
+-                float rotation=float(hash&65535u)*(6.28318530718/65536.0);
++                uint lane=gl_LocalInvocationID.x;
++                int invocation=int(gl_WorkGroupID.x)*2+int(lane/32u);
++                int sampleIndex=int(lane&31u);
++                bool valid=hardwareIrradiance.meta.y>0 && invocation<hardwareIrradiance.meta.w && hardwareIrradiance.meta.x>0;
++                int index=valid ? (hardwareIrradiance.meta.z+invocation)%hardwareIrradiance.meta.x : -1;
++                valid=valid && index>=0 && index<hardwareIrradiance.probes.length();
++                HardwareIrradianceProbe probe;
++                if(valid) {probe=hardwareIrradiance.probes[index];valid=probe.position.w>=0.0;}
+                 int samples=clamp(hardwareIrradiance.dimensions.w,8,32);
+-                float ambientVisibility=0.0;
+-                for(int sampleIndex=0;sampleIndex<32;++sampleIndex) {
+-                    if(sampleIndex>=samples) break;
++                if(valid && sampleIndex<samples) {
++                    ivec3 cell=ivec3(floor(probe.position.xyz))+hardwareIrradiance.reference.xyz;
++                    uint hash=uint(cell.x)*73856093u ^ uint(cell.y)*19349663u ^ uint(cell.z)*83492791u;
++                    float rotation=float(hash&65535u)*(6.28318530718/65536.0);
+                     float y=1.0-2.0*(float(sampleIndex)+.5)/float(samples);
+                     float radial=sqrt(max(0.0,1.0-y*y)),angle=float(sampleIndex)*2.39996322973+rotation;
+                     vec3 ray=vec3(radial*cos(angle),y,radial*sin(angle));
+-                    vec4 basis=vec4(1.0,ray*3.0)/float(samples);
++                    rayBasis[lane]=vec4(1.0,ray*3.0)/float(samples);
+                     RtHit hit;
+                     if(rtClosest(probe.position.xyz,ray,96.0,1,hit)) {
+-                        ambientVisibility+=smoothstep(0.0,2.0,hit.distance);
+-                        vec3 radiance=clamp(rtHitRadiance(hit),vec3(0),vec3(32));
+-                        hitR+=basis*radiance.r; hitG+=basis*radiance.g; hitB+=basis*radiance.b;
++                        rayHit[lane]=1u;
++                        rayRadiance[lane]=vec4(clamp(rtHitRadiance(hit),vec3(0),vec3(32)),smoothstep(0.0,2.0,hit.distance));
+                     } else {
+-                        ambientVisibility+=1.0;
+-                        vec3 radiance=pbrEnvironment(ray,1.0,1.0);
+-                        skyR+=basis*radiance.r; skyG+=basis*radiance.g; skyB+=basis*radiance.b;
++                        rayHit[lane]=0u;
++                        rayRadiance[lane]=vec4(pbrEnvironment(ray,1.0,1.0),1.0);
+                     }
+                 }
+-                probe.position.w=1.0+ambientVisibility/float(samples);
+-                probe.hitR=hitR; probe.hitG=hitG; probe.hitB=hitB;
+-                probe.skyR=skyR; probe.skyG=skyG; probe.skyB=skyB;
+-                hardwareIrradiance.probes[index]=probe;
++                // All lanes, including invalid probes and the last partial group,
++                // must reach this barrier before a probe reads its ray contributions.
++                barrier();
++                if(valid && sampleIndex==0) {
++                    vec4 hitR=vec4(0),hitG=vec4(0),hitB=vec4(0),skyR=vec4(0),skyG=vec4(0),skyB=vec4(0);
++                    float ambientVisibility=0.0;
++                    uint first=lane&~31u;
++                    for(int i=0;i<samples;++i) {
++                        uint slot=first+uint(i);
++                        vec4 basis=rayBasis[slot],radiance=rayRadiance[slot];
++                        ambientVisibility+=radiance.w;
++                        if(rayHit[slot]!=0u) {
++                            hitR+=basis*radiance.r;hitG+=basis*radiance.g;hitB+=basis*radiance.b;
++                        } else {
++                            skyR+=basis*radiance.r;skyG+=basis*radiance.g;skyB+=basis*radiance.b;
++                        }
++                    }
++                    probe.position.w=1.0+ambientVisibility/float(samples);
++                    probe.hitR=hitR;probe.hitG=hitG;probe.hitB=hitB;
++                    probe.skyR=skyR;probe.skyG=skyG;probe.skyB=skyB;
++                    hardwareIrradiance.probes[index]=probe;
++                }
+             }
+             """;
+     }
+--- a/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanHardwareIrradianceState.java
++++ b/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanHardwareIrradianceState.java
+@@ -269,7 +269,7 @@
+             VK10.vkCmdBindPipeline(commandBuffer, VK10.VK_PIPELINE_BIND_POINT_COMPUTE, this.pipeline);
+             VK10.vkCmdBindDescriptorSets(commandBuffer, VK10.VK_PIPELINE_BIND_POINT_COMPUTE,
+                 this.pipelineLayout, 3, stack.longs(environmentDescriptorSet), null);
+-            VK10.vkCmdDispatch(commandBuffer, (count + 63) / 64, 1, 1);
++            VK10.vkCmdDispatch(commandBuffer, VulkanHardwareIrradianceShader.workgroupCount(count), 1, 1);
+             VkMemoryBarrier.Buffer after = VkMemoryBarrier.calloc(1, stack)
+                 .sType(VK10.VK_STRUCTURE_TYPE_MEMORY_BARRIER)
+                 .srcAccessMask(VK10.VK_ACCESS_SHADER_WRITE_BIT)

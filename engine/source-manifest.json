@@ -1,0 +1,23 @@
+{
+  "version": "1.1",
+  "date": "2026-09-30",
+  "client_preview_sha256": "bbe02b510c2d3634b698c71d09699cde95b74018445202f30f39acb22d47324c",
+  "files": {
+    "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanColoredLightVolume.java": {
+      "before_sha256": "fdbd4f3640f8b1797e0f4f0c0d4a423ca3976f26fd22a88e04eb76de21b54508",
+      "after_sha256": "fed370e15b5232475fd2167ed2676e1cda2087b7f0f65ddbd72e15123d1a5548"
+    },
+    "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanColoredLightTiles.java": {
+      "before_sha256": "b6d1c64290425ef7834b8af54f6d233247405eda5156bb332c1964e6ade3a836",
+      "after_sha256": "bb37df2fe514067ca492e592a50daa26ceb33b0170b34685a66132669515f07a"
+    },
+    "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanHardwareIrradianceShader.java": {
+      "before_sha256": "cf3de730b3a0e2f922a6da376c08ca591afdd3817d873ab09d797302c5404a58",
+      "after_sha256": "20e54c5a5506bbd70a92f83249c6ee386263335e10cba5c2a0db62c43f55897a"
+    },
+    "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanHardwareIrradianceState.java": {
+      "before_sha256": "0ea52a0c11e4b4ac3180fedf94e06a5e3d567a99d21b304b66372726b9af134f",
+      "after_sha256": "97fb446b63d12792ac8e28c1604db6e4d4a497ce4206de4db01dfe9ac90988c0"
+    }
+  }
+}
