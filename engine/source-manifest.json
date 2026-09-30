@@ -1,23 +1,37 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "date": "2026-09-30",
-  "client_preview_sha256": "bbe02b510c2d3634b698c71d09699cde95b74018445202f30f39acb22d47324c",
+  "client_preview_sha256": "beb9725f7b7e74c45d3fe6ffe2987e3e56427c4c70b13ad11cb0be55afd717aa",
   "files": {
     "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanColoredLightVolume.java": {
       "before_sha256": "fdbd4f3640f8b1797e0f4f0c0d4a423ca3976f26fd22a88e04eb76de21b54508",
-      "after_sha256": "fed370e15b5232475fd2167ed2676e1cda2087b7f0f65ddbd72e15123d1a5548"
+      "after_sha256": "fed370e15b5232475fd2167ed2676e1cda2087b7f0f65ddbd72e15123d1a5548",
+      "patch": "gi-performance.patch"
     },
     "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanColoredLightTiles.java": {
       "before_sha256": "b6d1c64290425ef7834b8af54f6d233247405eda5156bb332c1964e6ade3a836",
-      "after_sha256": "bb37df2fe514067ca492e592a50daa26ceb33b0170b34685a66132669515f07a"
+      "after_sha256": "bb37df2fe514067ca492e592a50daa26ceb33b0170b34685a66132669515f07a",
+      "patch": "gi-performance.patch"
     },
     "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanHardwareIrradianceShader.java": {
       "before_sha256": "cf3de730b3a0e2f922a6da376c08ca591afdd3817d873ab09d797302c5404a58",
-      "after_sha256": "20e54c5a5506bbd70a92f83249c6ee386263335e10cba5c2a0db62c43f55897a"
+      "after_sha256": "20e54c5a5506bbd70a92f83249c6ee386263335e10cba5c2a0db62c43f55897a",
+      "patch": "gi-performance.patch"
     },
     "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanHardwareIrradianceState.java": {
       "before_sha256": "0ea52a0c11e4b4ac3180fedf94e06a5e3d567a99d21b304b66372726b9af134f",
-      "after_sha256": "97fb446b63d12792ac8e28c1604db6e4d4a497ce4206de4db01dfe9ac90988c0"
+      "after_sha256": "97fb446b63d12792ac8e28c1604db6e4d4a497ce4206de4db01dfe9ac90988c0",
+      "patch": "gi-performance.patch"
+    },
+    "minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanPbrMaterialVolume.java": {
+      "patch": "pbr-performance.patch",
+      "before_sha256": "9616ea72f8481873543cfbe977439319698215a77a2e5db850ced1c4076d038d",
+      "after_sha256": "25dfb700f3c35232018837af4e2c2e91ed5914f9d170a55fc7e7b5293692212b"
     }
+  },
+  "client_preview_asset": "minecraft-pbr-performance-preview-20260930.jar",
+  "unchanged_pbr_shader_sha256": {
+    "VulkanPbrShader.java": "6946b1a8480e452fb374d0bed98188c4395cf44aa0334ee5d66409185bc2b499",
+    "VulkanPbrWorldShader.java": "c43cde42327a17bfc584a24b23e77a02b852815e256c961b3723f2bf70258a04"
   }
 }

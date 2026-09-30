@@ -104,10 +104,10 @@ then run from the Gradle root:
 
 ```sh
 JAVA_HOME=/usr/lib/jvm/java-25-openjdk ./gradlew \
-  -I /path/to/engine/verify.init.gradle giClasspath test shadowJar \
+  -I /path/to/engine/verify.init.gradle giClasspath test \
   --tests '*VulkanGiTransportTest' --tests '*VulkanColoredLightTilesTest' \
   --tests '*VulkanColoredLightVolumeTest' --tests '*VulkanColoredLightShaderTest' \
-  --tests '*VulkanHardwareIrradiance*Test' \
+  --tests '*VulkanHardwareIrradiance*Test' shadowJar \
   --no-build-cache --no-parallel --max-workers=1
 ```
 

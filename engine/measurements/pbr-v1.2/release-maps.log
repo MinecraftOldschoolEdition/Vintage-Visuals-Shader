@@ -1,0 +1,6 @@
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:/home/eric/Developer/client-source/minecraft/build/distributions/minecraft-pbr-performance-preview-20260930.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+Hardware device: NVIDIA GeForce RTX 5080; Hardware ray queries available
+PBR map GPU PASS: 96 finite samples; NaN/Infinity LOD and UV, integer index extremes, bounded mip shifts and emission filtering

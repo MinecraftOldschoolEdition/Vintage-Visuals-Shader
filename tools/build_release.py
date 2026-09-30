@@ -45,7 +45,7 @@ def main():
     if any(p.is_symlink() for p in asset_root.rglob("*")):
         raise ValueError("Pack assets cannot contain symbolic links")
     files = [p for p in asset_root.rglob("*") if p.is_file()]
-    files += [root / name for name in ("pack.mcmeta", "README.md", "CHANGELOG.md", "PERFORMANCE.md", "VERSION")]
+    files += [root / name for name in ("pack.mcmeta", "README.md", "CHANGELOG.md", "PERFORMANCE.md", "PBR_PERFORMANCE.md", "VERSION")]
     output = args.output_dir / f"{pack_name}-{version}.zip"
     archive(output, root, files)
     with ZipFile(output) as zipped:

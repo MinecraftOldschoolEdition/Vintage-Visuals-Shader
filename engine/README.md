@@ -1,28 +1,33 @@
-# Shared GI engine update 1.1
+# Shared GI and PBR engine update v1.2
 
-This directory contains the actual renderer optimization used by RT and Vintage
-Visuals. Both packs compose the client engine with `#include <builtin>`. A resource
-pack cannot replace these Java classes or the engine compute dispatch by itself.
+RT and Vintage Visuals compose the client renderer with `#include <builtin>`.
+Resource packs cannot replace its Java classes or engine compute dispatch. Use
+this release's **PBR performance preview client dated 2026-09-30**, or an integrated
+build including both updates. The v1.1 GI-only preview lacks the PBR optimization.
 
-Use a client build incorporating this update (GI performance preview 2026-09-30 or
-a later integrated build). For source builds, apply the patch from `client-source`:
+For a format-3 source client already incorporating v1.1, run from `client-source`:
 
 ```sh
-git apply --check /path/to/engine/gi-performance.patch
-git apply /path/to/engine/gi-performance.patch
+git apply --check /path/to/engine/pbr-performance.patch
+git apply /path/to/engine/pbr-performance.patch
 ```
 
-The patch changes only the four GI production files; it is based on the format-3
-client source as it stood on September 30, 2026. `source-manifest.json` records the
-exact before/after file hashes. Older clients may require integrating the changes
-into their corresponding files. Do not apply the patch again to an updated client.
+For the pre-v1.1 format-3 source base, apply `gi-performance.patch` first using the
+same check/apply commands, then apply `pbr-performance.patch`. The GI patch changes
+four production files; the PBR patch changes only `VulkanPbrMaterialVolume.java`.
+The pure BSDF and world lighting shader remain the v1.1 implementation. Never
+apply an update twice. Older or independently modified clients may need manual
+integration. `source-manifest.json` records each patch's before/after hashes and
+the rebuilt client SHA-256.
 
-`verification/` contains snapshots of the affected tests/probes, including the
-frozen serial compute reference. Copy `verification/minecraft/` into the source
-checkout's `minecraft/` to run them. The existing client test fixtures and renderer
-are their dependencies. `verify.init.gradle` narrows compilation to Vulkan tests
-and the world fixture; see `PERFORMANCE.md` for commands and measured limits.
+`verification/` contains the GI and PBR test/probe snapshots and frozen reference
+sources. Copy `verification/minecraft/` into the source checkout's `minecraft/`;
+the existing client fixtures and renderer provide their remaining dependencies.
+`verify.init.gradle` narrows test compilation to Vulkan and the world fixture.
+See [PBR_PERFORMANCE.md](PBR_PERFORMANCE.md) for this release's measurements and
+commands, and [PERFORMANCE.md](PERFORMANCE.md) for the retained v1.1 GI results.
 
-The source bundle is separate from the playable pack ZIP. The playable ZIP has
-`assets/` and `pack.mcmeta` at its root and does not need extracting into another
-nested directory. The companion source ZIP is not itself a resource pack.
+The playable pack ZIP has `assets/` and `pack.mcmeta` at its root. The companion
+`GI-engine-update-1.2.zip` contains this cumulative source directory and is not a
+resource pack. The preview client is a separate release asset; importing the pack
+ZIP does not replace an older installed client.

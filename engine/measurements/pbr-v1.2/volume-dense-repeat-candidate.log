@@ -1,0 +1,18 @@
+[StringTranslate] Found language file: ../minecraft/resources/assets/minecraft/lang/en_us.json
+[StringTranslate] Loaded English fallback with 1873 entries
+[StringTranslate] Found language file: ../minecraft/resources/assets/minecraft/lang/en_us.json
+[StringTranslate] Loaded en_us with 1873 entries
+[BlockFenceGate] Added translation for tile.fenceGate.name
+40 achievements
+163 recipes
+[JukeboxSongRegistryBootstrap] Registered 16 jukebox songs and 16 playable item bindings
+[ItemCapabilityRegistryBootstrap] Registered 24 cooking-fuel and 3 crafting-remainder, 10 food, 10 consumable and 1 use-remainder item components
+[WolfFoodTagBootstrap] Bound 2 wolf-food items
+[AchievementRegistryBootstrap] Registered 40 achievements
+[BlockMiningRegistryBootstrap] Bound 18 block tags and registered 8 data profiles across 113 block mining rules
+[FireSpreadDataBootstrap] Registered 9 fire-spread rules
+[DispenserBehaviorDataBootstrap] Registered 3 projectile dispenser behaviors
+PBR volume fixture=fresh medianMs=0.413729 minMs=0.396155 maxMs=1.316679 outputHash=-362522708
+PBR volume fixture=block-edit medianMs=0.441962 minMs=0.382138 maxMs=2.072661 outputHash=1551832624
+PBR volume fixture=camera-step medianMs=0.453404 minMs=0.439056 maxMs=1.998870 outputHash=-149151952
+PBR volume fixture=cached-frame medianMs=0.000170 minMs=0.000152 maxMs=0.000336 outputHash=1551832624

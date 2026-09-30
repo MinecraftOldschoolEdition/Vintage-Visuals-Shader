@@ -1,0 +1,76 @@
+--- a/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanPbrMaterialVolume.java
++++ b/minecraft/src/net/minecraft/src/render/graphics/backend/vulkan/VulkanPbrMaterialVolume.java
+@@ -20,6 +20,8 @@
+     private final ChunkAccess[] chunks = new ChunkAccess[MAX_CHUNKS_PER_AXIS * MAX_CHUNKS_PER_AXIS];
+     private final long[] chunkIdentities = new long[this.chunks.length];
+     private final int[] chunkRevisions = new int[this.chunks.length];
++    private final int[] encodedMaterials = new int[Block.blocksList.length * 16];
++    private final boolean[] metadataMaterials = new boolean[Block.blocksList.length];
+     private Level world;
+     private int originX;
+     private int originY;
+@@ -62,31 +64,54 @@
+         }
+         if (!changed) return true;
+ 
++        // Optical block properties can change with graphics/registry settings.
++        // Reuse encodings only within this rebuild, never across generations.
++        Arrays.fill(this.encodedMaterials, -1);
+         for (int y = 0; y < SIZE; ++y) {
+             int worldY = nextY + y;
+             for (int z = 0; z < SIZE; ++z) {
+                 int worldZ = nextZ + z;
+-                for (int x = 0; x < SIZE; ++x) {
++                int row = SIZE * (z + SIZE * y);
++                int chunkRow = MAX_CHUNKS_PER_AXIS * ((worldZ >> 4) - minChunkZ);
++                for (int x = 0; x < SIZE;) {
+                     int worldX = nextX + x;
+-                    ChunkAccess chunk = this.chunks[((worldX >> 4) - minChunkX)
+-                        + MAX_CHUNKS_PER_AXIS * ((worldZ >> 4) - minChunkZ)];
+-                    int value;
++                    int end = Math.min(SIZE, x + 16 - (worldX & 15));
++                    ChunkAccess chunk = this.chunks[((worldX >> 4) - minChunkX) + chunkRow];
+                     if (chunk == null || worldY < this.minBuildHeight) {
+-                        value = UNLOADED_CELL;
++                        Arrays.fill(this.cells, row + x, row + end, UNLOADED_CELL);
+                     } else if (worldY >= this.maxBuildHeight) {
+-                        value = 0;
++                        Arrays.fill(this.cells, row + x, row + end, 0);
+                     } else {
+-                        int blockId = chunk.getBlockID(worldX & 15, worldY, worldZ & 15);
+-                        int metadata = blockId == 0 ? 0 : chunk.getBlockMetadata(worldX & 15, worldY, worldZ & 15);
+-                        value = encode(blockId, metadata);
++                        for (int cell = x; cell < end; ++cell)
++                            this.cells[row + cell] = encodedCell(chunk, (nextX + cell) & 15, worldY, worldZ & 15);
+                     }
+-                    this.cells[x + SIZE * (z + SIZE * y)] = value;
++                    x = end;
+                 }
+             }
+         }
+         markEmptyBricks(this.cells);
+         ++this.revision;
+         return true;
++    }
++
++    private int encodedCell(ChunkAccess chunk, int x, int y, int z) {
++        int blockId = chunk.getBlockID(x, y, z);
++        if (blockId == 0) return 0;
++        if (blockId < 0 || blockId >= this.metadataMaterials.length) return UNLOADED_CELL;
++        int first = blockId * 16;
++        if (this.encodedMaterials[first] < 0) {
++            int base = encode(blockId, 0);
++            boolean usesMetadata = false;
++            for (int metadata = 0; metadata < 16; ++metadata) {
++                int word = encode(blockId, metadata);
++                this.encodedMaterials[first + metadata] = word;
++                usesMetadata |= word != base;
++            }
++            this.metadataMaterials[blockId] = usesMetadata;
++        }
++        if (!this.metadataMaterials[blockId]) return this.encodedMaterials[first];
++        int metadata = chunk.getBlockMetadata(x, y, z);
++        return metadata >= 0 && metadata < 16 ? this.encodedMaterials[first + metadata] : encode(blockId, metadata);
+     }
+ 
+     /** Preserve material words; only completely empty aligned bricks get skip metadata. */

@@ -1,6 +1,6 @@
 {
   "pack": {
     "pack_format": 1,
-    "description": "Vintage Visuals shaders for Minecraft Oldschool Edition. Rasterized lighting, shadows and reflections. GI performance release 1.1 (requires updated client)."
+    "description": "Vintage Visuals v1.2 for Minecraft Oldschool Edition. Rasterized lighting, PBR materials and global illumination. Requires updated client."
   }
 }

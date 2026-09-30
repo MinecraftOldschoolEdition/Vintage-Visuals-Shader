@@ -20,6 +20,17 @@ Effect quality controls use stepped Low/Medium/High/Ultra sliders. Values remain
 local to this pack. Drag or click to choose; release to apply. Arrow keys adjust
 one step, and Home/End select the endpoints after focusing the slider.
 
+## PBR performance update v1.2
+
+Use the **PBR performance preview client dated 2026-09-30**, or a later client
+incorporating this update. Both packs now share a faster material-volume builder:
+dense-ground rebuilds used 47–51% less CPU time in the measured fixtures, with
+identical material words. Lighting shaders, texture maps and quality stay intact.
+The older GI-only preview does not contain this PBR update. Installing the pack
+ZIP alone does not update the renderer.
+
+[Measured PBR results and validation](PBR_PERFORMANCE.md) · [Engine source update](engine/README.md)
+
 ## GI performance update 1.1
 
 Use the GI performance preview client dated 2026-09-30 or a later client including
@@ -38,5 +49,5 @@ python3 tools/build_release.py
 
 The playable pack is written to `dist/`, with `assets/` and `pack.mcmeta` directly
 at the ZIP root. No enclosing repository folder is included. A separate
-`GI-engine-update-1.1.zip` contains the renderer patch and verification sources
+`GI-engine-update-1.2.zip` contains the cumulative GI and PBR patches and verification sources
 for client maintainers. Both archives have SHA-256 sidecars.
